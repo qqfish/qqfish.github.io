@@ -1,0 +1,22 @@
+/* Space out content a bit */
+body {
+  padding-top: 50px;
+  padding-bottom: 20px;
+  background-color: #eee;
+}
+
+a:hover {
+  text-decoration: none;
+}
+
+blockquote {
+  border-left: 5px solid #ddd;
+}
+
+p > div {
+  display: inline-block;
+}
+
+article {
+  padding-top: 20px;
+}
