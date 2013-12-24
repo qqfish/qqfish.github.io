@@ -1,58 +1,58 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>jekyll - Rioki's Corner</title>
-    <meta name="author" content="Sean Farrell" />
-    <script src="/js/jquery-1.10.2.min.js"></script>
-    <script src="/js/bootstrap.min.js"></script>
-    <link href="/css/bootstrap-theme.min.css" rel="stylesheet"/>
-    <link href="/css/bootstrap.min.css" rel="stylesheet">
-    <link href="/css/main.css" rel="stylesheet">
-      <link href="/css/screen.css" rel="stylesheet">
-    <link rel="alternate" type="application/atom+xml" title="Rioki's Corner Feed" href="/atom.xml" />
-  </head>
-  <body> 
-    <header class="navbar navbar-default navbar-fixed-top" role="banner">
-      <div class="container">
-        <div class="navbar-header">
-          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#title-nav">
-            <span class="sr-only">Toggle navigation</span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-          </button>
-	  <a class="navbar-brand">Rioki's Corner</a>
-        </div>
-        <nav class="collapse navbar-collapse nav-pills" role="navigation" id="title-nav">
-          <ul class="nav navbar-nav navbar-right">
-            <li >
-              <a href="/">Home</a>
-            </li>
-            <li >
-              <a href="/journal.html">Journal</a>
-            </li>
-            <li >
-              <a href="/projects.html">Projects</a>
-            </li>
-            <li >
-              <a href="/about.html">About</a>
-            </li>
-          </ul>
-        </nav>
-      </div>
-    </header>
-    <div id="content">
-      <div class="container">
-      <article>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>jekyll - Private Corner</title>
+<meta name="author" content="Sean Farrell" />
+<script src="/js/jquery-1.10.2.min.js"></script>
+<script src="/js/bootstrap.min.js"></script>
+<link href="/css/bootstrap-theme.min.css" rel="stylesheet"/>
+<link href="/css/bootstrap.min.css" rel="stylesheet">
+<link href="/css/main.css" rel="stylesheet">
+<link href="/css/social.css" rel="stylesheet">
+<link rel="alternate" type="application/atom+xml" title="Rioki's Corner Feed" href="/atom.xml" />
+</head>
+<body> 
+<header class="navbar navbar-default navbar-fixed-top" role="banner">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#title-nav">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand">Private Corner</a>
+    </div>
+    <nav class="collapse navbar-collapse nav-pills" role="navigation" id="title-nav">
+      <ul class="nav navbar-nav navbar-right">
+        <li >
+        <a href="/">Home</a>
+        </li>
+        <li >
+        <a href="/journal.html">Journal</a>
+        </li>
+        <li >
+        <a href="/projects.html">Projects</a>
+        </li>
+        <li >
+        <a href="/about.html">About</a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<div id="content">
+  <div class="container">
+    <article>
 
   
 
   
     
       <div>
-        <h3><a href="/2013/12/19/first-blog.html">My first blog!!</a></h3>
+        <h4><a href="/2013/12/19/first-blog.html">My first blog!!</a></h4>
           <p class="pull-right">
             <span class="glyphicon glyphicon-tags"></span>
             
@@ -61,12 +61,11 @@
           </p>
           <p class="text-muted">19 Dec 2013</p>
           <p>
-            {% highlight c %}
-  int main(){
-    printf("hello world!!\n");
-    return 0;
-  }
-{% endhighlight %}
+            <div class="highlight"><pre><code class="c">  <span class="kt">int</span> <span class="nf">main</span><span class="p">(){</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;hello world!!</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="p">}</span>
+</code></pre></div>
 
 Hello World!! Here is my first post of Jekyll. Thanks to Seeler's template, which looks really cool.  I will also keep updating this template in the future. 
 
@@ -82,18 +81,38 @@ It will be available on both <http://qqfish.github.io> and <http://yu-xiao.net>.
 
 </article>
 
+  </div>
+</div>
+<footer>
+  <div class="container">
+    <hr/>
+    <div class="row">
+      <div class="col-sm-offset-3 col-sm-2">
+        <div class="footer-info">
+          <i class="social-icons github"></i>
+        </div>
+        <div class="footer-info">
+          Follow me on github
+        </div>
+      </div>
+      <div class="col-sm-2">
+        <div class="footer-info">
+          <i class="social-icons google"></i>
+        </div>
+        <div class="footer-info">
+          Coming soon
+        </div>
+      </div>
+      <div class="col-sm-2">
+        <div class="footer-info">
+          <i class="social-icons linkedin"></i>
+        </div>
+        <div class="footer-info">
+          Contact me on Linkedin
+        </div>
       </div>
     </div>
-    <footer>
-        <div class="container">
-            <div class="row">
-                <div class="col-md-4">
-                    <i class="icon-envelope"></i>
-                </div>
-                <div class="col-md-4"></div>
-                <div class="col-md-4"></div>
-            </div>
-        </div>
-    </footer>
-  </body>
+  </div>
+</footer>
+</body>
 </html>
