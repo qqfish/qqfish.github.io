@@ -9,7 +9,7 @@ nav: journal
       <span class="pull-right">
         <span class="glyphicon glyphicon-tags"></span>
         {% for tag in page.tags %}
-          <a class="text-muted" href="/tag/{{tag}}.html">{{tag}}</a>
+          <a class="text-muted" href="{{ site.baseurl }}tag/{{tag}}.html">{{tag}}</a>
         {% endfor %}
       </span>
     </small>

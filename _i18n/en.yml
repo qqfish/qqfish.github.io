@@ -1,0 +1,13 @@
+global:
+  chinese: 中文
+  english: English
+  toggle_language: Chinese
+  toggle_url: zh
+  home: Home
+  journal: Journal
+  projects: Projects
+  about: About
+  twitter: Twitter
+  github: GitHub
+pages:
+  example: example

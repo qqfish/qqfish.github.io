@@ -1,8 +1,3 @@
----
-layout: page
-title: Projects
-nav: projects
----
 
 ### Haijiao EDU (WebFC)
 

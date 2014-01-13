@@ -1,9 +1,10 @@
-title:    "Private Corner"
-url:      http://www.rioki.org
-author:   Sean Farrell
-email:    sean.farrell@rioki.org
-markdown: kramdown
-lsi:      false
-pygments: true
-future:   false
-exclude:  [Gemfile, Gemfile.lock, wercker.yml]
+title:      "Private Corner"
+url:        http://www.rioki.org
+author:     Sean Farrell
+email:      sean.farrell@rioki.org
+markdown:   kramdown
+lsi:        false
+pygments:   true
+future:     false
+exclude:    [Gemfile, Gemfile.lock, wercker.yml]
+languages:  ["en", "zh"]

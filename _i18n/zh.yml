@@ -1,0 +1,13 @@
+global:
+  chinese: 中文
+  english: English
+  toggle_language: 英语
+  toggle_url: ' '
+  home: 主页
+  journal: 日志
+  projects: 项目
+  about: 关于我
+  twitter: Twitter
+  github: GitHub
+pages:
+  example: example

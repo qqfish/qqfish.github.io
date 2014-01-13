@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Home"
+title: Home
 nav: home
 ---
 <article>
@@ -10,7 +10,7 @@ nav: home
     <p class="pull-right">
     <span class="glyphicon glyphicon-tags"></span>
     {% for tag in post.tags %}
-    <a class="text-muted" href="/tag/{{tag}}.html">{{tag}}</a>
+    <a class="text-muted" href="{{ site.baseurl }}tag/{{tag}}.html">{{tag}}</a>
     {% endfor %}
     </p>
     <p class="text-muted">{{ post.date | date_to_string }}</p>

@@ -28,16 +28,19 @@
     <nav class="collapse navbar-collapse nav-pills" role="navigation" id="title-nav">
       <ul class="nav navbar-nav navbar-right">
         <li {% if page.nav == "home"%}class="active"{% endif%}>
-        <a href="/">Home</a>
+        <a href="{{ site.baseurl }}">{% t global.home %}</a>
         </li>
         <li {% if page.nav == "journal"%}class="active"{% endif%}>
-        <a href="/journal.html">Journal</a>
+        <a href="{{ site.baseurl }}journal.html">{% t global.journal %}</a>
         </li>
         <li {% if page.nav == "projects"%}class="active"{% endif%}>
-        <a href="/projects.html">Projects</a>
+        <a href="{{ site.baseurl }}projects.html">{% t global.projects %}</a>
         </li>
         <li {% if page.nav == "about"%}class="active"{% endif%}>
-        <a href="/about.html">About</a>
+        <a href="{{ site.baseurl }}about.html">{% t global.about %}</a>
+        </li>
+        <li>
+        <a href="{{ site.baseurl_root }}{% t global.toggle_url %}">{% t global.toggle_language %}</a>
         </li>
       </ul>
     </nav>
