@@ -1,0 +1,31 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<urlset xmlns='http://www.sitemaps.org/schemas/sitemap/0.9'>
+    <url>
+        <loc>http://www.rioki.org/2013/12/19/first-blog.html</loc>
+        <lastmod>2014-01-14T00:36:06+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://www.rioki.org/2013/12/20/welcome-to-jekyll.html</loc>
+        <lastmod>2014-01-14T00:36:06+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://www.rioki.org/404.html</loc>
+        <lastmod>2014-01-14T00:36:06+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://www.rioki.org/about.html</loc>
+        <lastmod>2014-01-14T00:36:06+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://www.rioki.org/</loc>
+        <lastmod>2014-01-14T00:36:06+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://www.rioki.org/journal.html</loc>
+        <lastmod>2014-01-14T00:36:06+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://www.rioki.org/projects.html</loc>
+        <lastmod>2014-01-14T00:36:06+08:00</lastmod>
+    </url>
+</urlset>

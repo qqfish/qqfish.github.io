@@ -1,0 +1,44 @@
+/* Space out content a bit */
+body {
+  padding-top: 50px;
+  padding-bottom: 20px;
+}
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 730px;
+  }
+}
+
+a:hover, a:active {
+  text-decoration: none;
+}
+
+p > div {
+  display: inline-block;
+}
+
+article {
+  padding-top: 20px;
+}
+
+.post-title a {
+  color: #666;
+}
+
+.post-title a:hover, .post-title a:active {
+  color: #000;
+}
+
+.footer-info {
+  left: auto;
+  right: auto;
+  font-size: 12px;
+  text-align: center;
+  color: #555;
+}
+
+.footer-info > i {
+  margin-left: auto;
+  margin-right: auto;
+}
