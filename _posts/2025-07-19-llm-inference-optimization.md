@@ -12,18 +12,18 @@ math: true
 ## Overview
 There are many different configurations for running LLM inference. Each configuration has different latency (TPOT, time per output token) and throughput (MFU, model flops utilization). Each dot in the following diagram represents one configuration:
 
-![LLM Inference Performance Scatter Plot](../images/llm-inference/raw-perf.png)
+![LLM Inference Performance Scatter Plot](/images/llm-inference/raw-perf.png)
 
 There are too many different configurations to run benchmarks on all of them and display them in one diagram. Fortunately, we don't need to. Even with these limited examples, we can identify configurations that are strictly better than others: those in the upper-left region. 
 
 For a given model and hardware, there should be a function that takes TPOT as input and returns the optimal MFU. We call this the "optimal TPOT-MFU function for LLM inference". Configurations that can achieve the MFU & TPOT for that function are called optimal configurations.
 
-![LLM Inference Performance with Optimal Line](../images/llm-inference/opt-perf.png)
+![LLM Inference Performance with Optimal Line](/images/llm-inference/opt-perf.png)
 
 The goals for LLM inference performance tuning are:
 1. Identify the "optimal TPOT-MFU function for LLM inference" (the blue line)
 2. Set the TPOT SLA for your LLM inference, and you should be able to get the optimal configuration and optimal MFU.
-3. Optimize your LLM inference stack to acheive the optimal MFU.
+3. Optimize your LLM inference stack to achieve the optimal MFU.
 
 In this blog, we will show you how to identify the "optimal TPOT-MFU function for LLM inference" (#1) and how to optimize your LLM inference stack to achieve the optimal MFU (#3).
 
@@ -31,24 +31,24 @@ In this blog, we will show you how to identify the "optimal TPOT-MFU function fo
 
 | Notation | Description |
 | --- | --- |
-| $B$ | Number of tokens globally |
-| $D$ | Hidden size |
-| $H_{q}$ | Number of query's attention heads |
-| $H_{kv}$ | Number of kv's attention heads |
-| $HD$ | Head dimension |
-| $L$ | Number of layers |
-| $M_{param}$ | Total number of parameters for the model |
-| $M_{compute}$ | Number of triggerred parameters for each token. For a dense LLM, $M_{compute} == M_{param}$. For a MOE LLM, $M_{compute} < M_{param}$. |
-| $T_{w}$ | Number of bytes for the datatype of weights |
-| $T_{kv}$ | Number of bytes for the datatype of kv |
-| $Input$ | Input length for a request |
-| $Output$ | Output length for a request |
-| $QPS$ | QPS per chips |
-| $Flops$ | Flops/s for the given hardware |
-| $BW$ | HBM bandwidth for the given hardware |
-| $W_{nvlink}$ | Nvlink bandwidth for the given hardware |
-| $W_{rdma}$ | RDMA bandwidth for the given hardware |
-| $P$ | Number of chips with nvlink |
+| $$B$$ | Number of tokens globally |
+| $$D$$ | Hidden size |
+| $$H_q$$ | Number of query's attention heads |
+| $$H_{\text{kv}}$$ | Number of kv's attention heads |
+| $$HD$$ | Head dimension |
+| $$L$$ | Number of layers |
+| $$M_{\text{param}}$$ | Total number of parameters for the model |
+| $$M_{\text{compute}}$$ | Number of triggered parameters for each token. For a dense LLM, $$M_{\text{compute}} == M_{\text{param}}$$. For a MOE LLM, $$M_{\text{compute}} < M_{\text{param}}$$. |
+| $$T_w$$ | Number of bytes for the datatype of weights |
+| $$T_{\text{kv}}$$ | Number of bytes for the datatype of kv |
+| $$\text{Input}$$ | Input length for a request |
+| $$\text{Output}$$ | Output length for a request |
+| $$QPS$$ | QPS per chips |
+| $$\text{Flops}$$ | Flops/s for the given hardware |
+| $$BW$$ | HBM bandwidth for the given hardware |
+| $$W_{\text{nvlink}}$$ | Nvlink bandwidth for the given hardware |
+| $$W_{\text{rdma}}$$ | RDMA bandwidth for the given hardware |
+| $$P$$ | Number of chips with nvlink |
 
 ## How to calculate MFU for LLM inference?
 
@@ -56,8 +56,8 @@ There are 2 computationally dense stages in LLMs: MLP and Attention.
 
 | Stage | Required Flops | Required HBM data movement |
 | --- | --- | --- |
-| MLP | $2 \cdot QPS \cdot (Input+Output) \cdot M_{\text{compute}}$ |  $\frac{2 \cdot QPS \cdot (Input+Output)}{B} \cdot M_{\text{params}} \cdot T_w$ |
-| Attn| $2 \cdot QPS \cdot Input \cdot (Input+Output) \cdot H_q \cdot HD \cdot L$ | $QPS \cdot Output \cdot (2 \cdot Input + Output) \cdot H_{kv} \cdot HD \cdot L \cdot T_{kv}$ |
+| MLP | $$2 \cdot QPS \cdot (\text{Input}+\text{Output}) \cdot M_{\text{compute}}$$ |  $$\frac{2 \cdot QPS \cdot (\text{Input}+\text{Output})}{B} \cdot M_{\text{params}} \cdot T_w$$ |
+| Attn| $$2 \cdot QPS \cdot \text{Input} \cdot (\text{Input}+\text{Output}) \cdot H_q \cdot HD \cdot L$$ | $$QPS \cdot \text{Output} \cdot (2 \cdot \text{Input} + \text{Output}) \cdot H_{\text{kv}} \cdot HD \cdot L \cdot T_{\text{kv}}$$ |
 
 So the MFU of LLM inference is:
 
@@ -68,7 +68,7 @@ $$
 The following three components can potentially bottleneck LLM inference performance:
 
 ### 1. MLP computation (most common)
-LLMs have very large $M_{compute}$ and $M_{params}$. In most cases, the MLP component dominates end-to-end performance. To achieve high MFU in this scenario, we need to ensure that computation time exceeds HBM data movement time.
+LLMs have very large $$M_{\text{compute}}$$ and $$M_{\text{params}}$$. In most cases, the MLP component dominates end-to-end performance. To achieve high MFU in this scenario, we need to ensure that computation time exceeds HBM data movement time.
 
 $$
 \frac{2 \cdot QPS \cdot (Input+Output) \cdot M_{\text{compute}}}{\text{flops}} > \frac{2 \cdot QPS \cdot (Input+Output) \cdot M_{\text{params}} \cdot T_w}{B \cdot BW}
@@ -80,9 +80,9 @@ $$
 
 The key to performance in this common case is having a good batching strategy to ensure sufficient tokens for computation in each step.
 
-Here is the $B$ for some popular models on the same hardware:
+Here is the $$B$$ for some popular models on the same hardware:
 
-|Hardware|Model|$B$|
+|Hardware|Model|$$B$$|
 | --- | --- | --- |
 | H100 | qwen3-32B-w16a16c16| 295|
 | H100 | qwen3-32B-w8a8c8| 295|
@@ -90,11 +90,11 @@ Here is the $B$ for some popular models on the same hardware:
 | H100 | qwen3-235B-A22B-w16a16c16| 3154|
 | H100 | deepseek-v3-w8a8c8| 6603|
 
-Dense models are relatively easy to achieve high MFU with. However, MoE models are much more challenging since they require a larger number of tokens in each step. Note that the datatype doesn't impact $B$.
+Dense models are relatively easy to achieve high MFU with. However, MoE models are much more challenging since they require a larger number of tokens in each step. Note that the datatype doesn't impact $$B$$.
 
-Here is the $B$ for the same models on different hardwares:
+Here is the $$B$$ for the same models on different hardware:
 
-|Hardware|Model|$B$|
+|Hardware|Model|$$B$$|
 | --- | --- | --- |
 | H100 | qwen3-30B-A3B-w16a16c16| 2952|
 | H100 | qwen3-30B-A3B-w8a8c8| 2952|
@@ -103,7 +103,7 @@ Here is the $B$ for the same models on different hardwares:
 | L40s | qwen3-30B-A3B-w16a16c16| 4190|
 | L20 | qwen3-30B-A3B-w16a16c16| 1389|
 
-Among these hardware options, it's easier to achieve high MFU on H20 since it has the highest $BW/Flops$ ratio.
+Among these hardware options, it's easier to achieve high MFU on H20 since it has the highest $$BW/\text{Flops}$$ ratio.
 
 ### 2. Attn computation
 Attention computation becomes the bottleneck for end-to-end performance when:
@@ -120,9 +120,9 @@ $$
 $$
 Output < Input \cdot \frac{H_q \cdot BW}{H_{kv} \cdot T_{kv} \cdot \text{flops}}
 $$
-Output needs to be small enough to avoid being bottlenecked by HBM data movement. The ratio between input and output is mainly impacted by $H_{q}/H_{kv}$.
+Output needs to be small enough to avoid being bottlenecked by HBM data movement. The ratio between input and output is mainly impacted by $$H_q/H_{\text{kv}}$$.
 
-Here are the $Input$ and $Output$ when Attn computation is the bottleneck:
+Here are the $$\text{Input}$$ and $$\text{Output}$$ when Attn computation is the bottleneck:
 
 | Hardware | Model | minimum Input length | maximum Output length | input:output ratio |
 |--|--|--|--|--|
@@ -139,9 +139,9 @@ We can see that when input length exceeds 15K-60K tokens, attention becomes the 
 
 | Stage | Computation cost | HBM bandwidth cost |
 | --- | --- | --- |
-| MLP | $2 \cdot B \cdot M_{\text{compute}} / \text{Flops}$ | $M_{\text{params}} / BW$ |
-| Prefill Attn| $4 \cdot Seq_q \cdot Seq_{kv} \cdot H_q \cdot HD \cdot L / \text{Flops}$ | $2 \cdot Seq_{kv} \cdot H_{kv} \cdot HD \cdot L / BW$ |
-| Decode Attn| $4 \cdot B \cdot Seq_{kv} \cdot H_q \cdot HD \cdot L / \text{Flops}$ | $2 \cdot B \cdot Seq_{kv} \cdot H_{kv} \cdot HD \cdot L / BW$ |
+| MLP | $$2 \cdot B \cdot M_{\text{compute}} / \text{Flops}$$ | $$M_{\text{params}} / BW$$ |
+| Prefill Attn| $$4 \cdot Seq_q \cdot Seq_{\text{kv}} \cdot H_q \cdot HD \cdot L / \text{Flops}$$ | $$2 \cdot Seq_{\text{kv}} \cdot H_{\text{kv}} \cdot HD \cdot L / BW$$ |
+| Decode Attn| $$4 \cdot B \cdot Seq_{\text{kv}} \cdot H_q \cdot HD \cdot L / \text{Flops}$$ | $$2 \cdot B \cdot Seq_{\text{kv}} \cdot H_{\text{kv}} \cdot HD \cdot L / BW$$ |
 
 From the above table, we can see that different stages have varying computational and bandwidth requirements.
 
@@ -156,7 +156,7 @@ Output > \max\left(\frac{M_{\text{compute}} \cdot BW}{H_{kv} \cdot HD \cdot L \c
 $$
 
 From this formula, we can see:
-- If $M_{compute}$ is smaller, it's easier to become memory bandwidth bound.
+- If $$M_{\text{compute}}$$ is smaller, it's easier to become memory bandwidth bound.
 
 | Hardware | Model | given Input length | Output length |
 |--|--|--|--|
@@ -174,7 +174,7 @@ From this formula, we can see:
 | H100 | qwen3-30B-A3B-w16a16c16| 30000| 406|
 | H100 | qwen3-30B-A3B-w16a16c16| 80000| 1084|
 
-- If the hardware has a lower $BW/Flops$ ratio, it's easier to become memory bandwidth bound.
+- If the hardware has a lower $$BW/\text{Flops}$$ ratio, it's easier to become memory bandwidth bound.
 
 | Hardware | Model | given Input length | Output length |
 |--|--|--|--|
@@ -185,41 +185,41 @@ From this formula, we can see:
 | A100 | qwen3-30B-A3B-w16a16c16| 10000| 391|
 
 ### Takeaways
-- $B$ is critical for achieving high MFU on the MLP part. It is the most important optimization if input and output length are small.
+- $$B$$ is critical for achieving high MFU on the MLP part. It is the most important optimization if input and output length are small.
 - If the input length exceeds ~60K tokens, attention computation becomes more expensive than the MLP component.
 - Even medium output lengths (500-2000 tokens) can make LLM inference memory bandwidth bound.
 In the following sections, we will discuss the optimization we can use to mitigate these issues.
 
 ## Batching 
 
-As we discussed in the previous section, $B$ is critical for MFU.
+As we discussed in the previous section, $$B$$ is critical for MFU.
 
 There are two stages for LLM inference:
-- Prefill: Generate KV cache for the input sequence. In this stage, $B == Input$, so we usually don't need to batch prefill requests.
-- Decode: Generate one token per step. In this stage, $B == 1$ for one request per step. We need to batch multiple decode requests together to achieve a high $B$.
+- Prefill: Generate KV cache for the input sequence. In this stage, $$B == \text{Input}$$, so we usually don't need to batch prefill requests.
+- Decode: Generate one token per step. In this stage, $$B == 1$$ for one request per step. We need to batch multiple decode requests together to achieve a high $$B$$.
 
 Batching the decode stage is challenging since one machine cannot generate enough decode requests by itself. There are typically two approaches to batch decode requests:
 - Prefill-decode fusion.
 - Prefill-decode disaggregation.
 
 ### Prefill-decode fusion
-Instead of batching decode requests with other decode requests, we can batch prefill requests with decode requests to collect enough $B$.
+Instead of batching decode requests with other decode requests, we can batch prefill requests with decode requests to collect enough $$B$$.
 
-<img src="../images/prefill-decode-fusion.jpeg" />
+![Prefill-Decode Fusion Architecture](/images/prefill-decode-fusion.jpeg)
 
-In this diagram, $B = \text{prefill_bs} \cdot \text{prefill_chunk} + \text{decode_bs}$.
+In this diagram, $$B = \text{prefill\_bs} \cdot \text{prefill\_chunk} + \text{decode\_bs}$$.
 
-This way can achieve higher $B$ than batching decode requests with other decode requests. And it is relatively easy to tune:
+This way can achieve higher $$B$$ than batching decode requests with other decode requests. And it is relatively easy to tune:
 
-We know that we can achieve high MFU if $B$ exceeds a threshold for a given model and hardware. If we know the $input:output$ ratio, we can configure:
+We know that we can achieve high MFU if $$B$$ exceeds a threshold for a given model and hardware. If we know the $$\text{input}:\text{output}$$ ratio, we can configure:
 $$\text{prefill\_chunk} : \text{decode\_bs} = \text{input} : \text{output}$$
 $$\text{prefill\_chunk} + \text{decode\_bs} = B = \frac{M_{\text{params}} \cdot T_w \cdot \text{flops}}{2 \cdot M_{\text{compute}} \cdot BW}$$
-For example, for Qwen3-32B on H100, $B = 295$. For an application with average input length of 1000 and average output length of 100, the optimal configuration would be $\text{prefill\_chunk} = 268, \text{decode\_bs} = 27$.
+For example, for Qwen3-32B on H100, $$B = 295$$. For an application with average input length of 1000 and average output length of 100, the optimal configuration would be $$\text{prefill\_chunk} = 268, \text{decode\_bs} = 27$$.
 
 ### Prefill-decode disaggregation
-With this approach, we can run prefill and decode on different machines. A decode machine can receive decode requests from multiple prefill machines to achieve a larger $B$ for the decode stage.
+With this approach, we can run prefill and decode on different machines. A decode machine can receive decode requests from multiple prefill machines to achieve a larger $$B$$ for the decode stage.
 
-<img src="../images/prefill-decode-disagg.jpeg" />
+![Prefill-Decode Disaggregation Architecture](/images/prefill-decode-disagg.jpeg)
 
 The true power of prefill-decode disaggregation lies in using different chips for each stage (e.g., A100 for prefill, H20 for decode). The ratio between prefill and decode machines can be calculated as:
 $$\text{prefill\_machine} : \text{decode\_machine} = \text{input} \cdot \frac{\text{decode\_MFU} \cdot \text{decode\_chip\_flops}}{\text{prefill\_MFU} \cdot \text{prefill\_chip\_flops}} : \text{output}$$
@@ -247,24 +247,24 @@ Peak MFU is similar between these two strategies.
 LLM inference can easily become memory bandwidth bound because we need to copy KV cache from HBM to cache in every decode step:
 $$\text{total\_size\_to\_move} = Output \cdot (2 \cdot Input + Output) \cdot H_{kv} \cdot HD \cdot L \cdot T_{kv}$$
 
-An effective way to reduce it is to use speculative decoding. Using speculative decoding, we can generate multiple tokens in one decode step, which can significantly reduce the $\text{total\_size\_to\_move}$.
+An effective way to reduce it is to use speculative decoding. Using speculative decoding, we can generate multiple tokens in one decode step, which can significantly reduce the $$\text{total\_size\_to\_move}$$.
 |notation| meaning|
 |--|--|
-|$AR$| accept ratio of speculative decoding|
-|$N$| number of tokens to predict in speculative decoding|
+|$$AR$$| accept ratio of speculative decoding|
+|$$N$$| number of tokens to predict in speculative decoding|
 
 So the expected number of tokens each decoding step can generate is:
 $$\text{expected\_tokens\_generated} = \sum_{i=0}^{N} AR^i$$
 
-For example, if $AR=0.7;N=3$, the expected number of tokens each decoding step can generate is:
+For example, if $$AR=0.7;N=3$$, the expected number of tokens each decoding step can generate is:
 $$\text{expected\_tokens\_generated} = 0.7^0 + 0.7^1 + 0.7^2 + 0.7^3 = 2.42$$
 
 Then the total size to move from HBM to cache in attention can be reduced to:
 $$\text{total\_size\_to\_move} = \frac{Output}{\text{expected\_tokens\_generated}} \cdot (2 \cdot Input + Output) \cdot H_{kv} \cdot HD \cdot L \cdot T_{kv}$$
 
 In addition to reduce memory bandwidth usage, speculative decoding can also reduce the TPOT:
-- without speculative decoding: $TPOT = \text{decode\_step\_latency}$
-- with speculative decoding: $TPOT = \text{decode\_step\_latency} / \text{expected\_tokens\_generated}$
+- without speculative decoding: $$TPOT = \text{decode\_step\_latency}$$
+- with speculative decoding: $$TPOT = \text{decode\_step\_latency} / \text{expected\_tokens\_generated}$$
 
 Note:
 - [Guided Generation](https://arxiv.org/abs/2307.09702) is another more constrained approach to reduce memory bandwidth usage.
@@ -287,15 +287,15 @@ Benefits of TP:
 However, this comes with data communication costs. TP requires all-reduce operations to collect activations from all TP shards at the end of Attention and MLP blocks. The data communication size for TP is:
 $$\text{size\_of\_data\_communication} = 4 \cdot B \cdot H \cdot L$$
 
-H100/A100/H20 systems have NVLink high-bandwidth communication across 8 chips. When $TP \leq 8$, we can use NVLink for communication, and the communication cost is:
+H100/A100/H20 systems have NVLink high-bandwidth communication across 8 chips. When $$TP \leq 8$$, we can use NVLink for communication, and the communication cost is:
 $$\text{TP\_cost} = \frac{4 \cdot B \cdot H \cdot L}{W_{\text{nvlink}}}$$
-When $TP > 8$, we first use RDMA to communicate $1/8$ of the data across the same rank on different machines, then use NVLink to communicate within each machine. The communication cost becomes:
+When $$TP > 8$$, we first use RDMA to communicate $$1/8$$ of the data across the same rank on different machines, then use NVLink to communicate within each machine. The communication cost becomes:
 $$\text{TP\_cost} = \frac{4 \cdot B \cdot H \cdot L}{W_{\text{nvlink}}} + \frac{4 \cdot B \cdot H \cdot L}{8 \cdot W_{\text{rdma}}}$$
-Since RDMA and NVLink are different communication channels, we can overlap them. The optimized communication cost for $TP > 8$ is:
+Since RDMA and NVLink are different communication channels, we can overlap them. The optimized communication cost for $$TP > 8$$ is:
 $$\text{TP\_cost} = \max\left(\frac{4 \cdot B \cdot H \cdot L}{W_{\text{nvlink}}}, \frac{4 \cdot B \cdot H \cdot L}{8 \cdot W_{\text{rdma}}}\right)$$
 
 Note:
-- TP for Attention is actually limited by $H_{kv}$, but this limitation can be mitigated by leveraging other model parallelism strategies like SP (sequence parallel).
+- TP for Attention is actually limited by $$H_{\text{kv}}$$, but this limitation can be mitigated by leveraging other model parallelism strategies like SP (sequence parallel).
 - In addition to TP, there are many other model parallelism strategies including PP (pipeline parallel), EP (expert parallel), SP (sequence parallel), USP (Ulysses sequence parallel), and CPP (chunk pipeline parallel). Each has different trade-offs. For simplicity, we focus only on TP.
 - We can adopt advanced communication computation overlap technique like Flux(https://arxiv.org/html/2406.06858v1) for further improvement.
 
@@ -305,15 +305,15 @@ We have discussed the bottlenecks of LLM inference and three key optimization st
 
 We will choose to use:
 - batching: Prefill-decode fusion
-- speculative decoding: $AR=0.7, N=3, \text{expected\_tokens\_generated}=2.42$
+- speculative decoding: $$AR=0.7, N=3, \text{expected\_tokens\_generated}=2.42$$
 - model parallelism: TP using nvlink
 
-We use $B$ as batch size. The number of prefill tokens will be $\frac{B \cdot \text{input}}{\text{input} + \text{output}}$ and the number of decode tokens will be $\frac{B \cdot \text{output}}{\text{input} + \text{output}}$.
+We use $$B$$ as batch size. The number of prefill tokens will be $$\frac{B \cdot \text{input}}{\text{input} + \text{output}}$$ and the number of decode tokens will be $$\frac{B \cdot \text{output}}{\text{input} + \text{output}}$$.
 
 | Stage | compute time | HBM bandwidth time | nvlink time |
 | --- | --- | --- | --- |
-| MLP | $\frac{2 \cdot B \cdot M_{\text{compute}}}{TP \cdot \text{Flops}}$ |  $\frac{M_{\text{params}} \cdot T_w}{TP \cdot BW}$ | $\frac{2 \cdot B \cdot H \cdot L}{W_{\text{nvlink}}}$ |
-| Attn| $\frac{2 \cdot B \cdot (Input+Output) \cdot H_q \cdot HD \cdot L}{TP \cdot \text{Flops}}$ | $\frac{B \cdot \text{output} \cdot (2 \cdot Input + Output) \cdot H_{kv} \cdot HD \cdot L \cdot T_{kv}}{(Input + Output) \cdot TP \cdot \text{expected\_tokens\_generated} \cdot BW}$ | $\frac{2 \cdot B \cdot H \cdot L}{W_{\text{nvlink}}}$ |
+| MLP | $$\frac{2 \cdot B \cdot M_{\text{compute}}}{TP \cdot \text{Flops}}$$ |  $$\frac{M_{\text{params}} \cdot T_w}{TP \cdot BW}$$ | $$\frac{2 \cdot B \cdot H \cdot L}{W_{\text{nvlink}}}$$ |
+| Attn| $$\frac{2 \cdot B \cdot (\text{Input}+\text{Output}) \cdot H_q \cdot HD \cdot L}{TP \cdot \text{Flops}}$$ | $$\frac{B \cdot \text{output} \cdot (2 \cdot \text{Input} + \text{Output}) \cdot H_{\text{kv}} \cdot HD \cdot L \cdot T_{\text{kv}}}{(\text{Input} + \text{Output}) \cdot TP \cdot \text{expected\_tokens\_generated} \cdot BW}$$ | $$\frac{2 \cdot B \cdot H \cdot L}{W_{\text{nvlink}}}$$ |
 
 Please note that we have used some approximations for attention computation and HBM bandwidth.
 
@@ -326,7 +326,7 @@ $$MFU = \frac{\text{mlp\_compute\_time} + \text{attn\_compute\_time}}{\text{step
 
 We can write a simple Python program to plot the "optimal TPOT-MFU function for LLM inference". Here's an example:
 
-![LLM Inference Optimal Performance Chart](../images/llm-inference/roofline.png)
+![LLM Inference Optimal Performance Chart](/images/llm-inference/roofline.png)
 
 With this, we understand the roofline performance for LLM inference. We can select a point on the diagram with the expected TPOT for deployment. When actually deploying the model, you may find that performance doesn't meet expectations. There are still many optimizations needed in the LLM serving stack to achieve optimal performance. Here are some important ones to investigate further and their expected impact:
 - **Quantization**: Quantization can both accelerate computation and reduce memory bandwidth usage. This blog briefly mentioned int8/fp8 quantization, but the actual quantization techniques are much more complex. Expected impact: 30-70% throughput/latency improvements.
