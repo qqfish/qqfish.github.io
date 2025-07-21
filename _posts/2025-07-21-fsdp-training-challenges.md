@@ -15,7 +15,7 @@ Fully Sharded Data Parallel (FSDP) has become a cornerstone technique for traini
 
 FSDP excels at training dense language models because it can effectively scale to avoid network bandwidth bottlenecks through proper batch size selection. The key insight is that with sufficient batch size, we can fully hide communication with computation.
 
-### Communication cost
+### Communication Cost
 The communication overhead in FSDP primarily comes from:
 - **All-gather operations**: Gathering sharded parameters before forward/backward passes
 - **Reduce-scatter operations**: Collecting and redistributing gradients after backward passes
@@ -53,7 +53,7 @@ The communication time is:
 $$T_{\text{comm}} = \frac{2 \cdot M \cdot T_w}{nvlink}$$
 
 
-### Computation cost and batch size
+### Computation Cost and Batch Size
 
 The computation time scales with batch size $$B$$:
 
@@ -88,15 +88,15 @@ FSDP can shard model weights, gradients, and optimizer states across all devices
 
 Mixture-of-Experts models present significant challenges for FSDP because their $$M_{comp}$$ and $$M_{params}$$ are different. FSDP communication overhead scales with $$M_{params}$$:
 
-$$T_{\text{comm}}^{\text{MOE}} = \frac{2 \cdot M_{\text{params}} \cdot T_w}{nvlink}$$
+$$T_{\text{comm}} = \frac{2 \cdot M_{\text{params}} \cdot T_w}{nvlink}$$
 
 But the computation scales with $$M_{comp}$$:
 
-$$T_{\text{comp}} = \frac{6 \cdot B \cdot M_{\text{comp}}{FLOPS}}$$
+$$T_{\text{comp}} = \frac{6 \cdot B \cdot M_{\text{comp}}}{FLOPS}$$
 
 This means the minimum batch size requirement becomes:
 
-$$B^{\text{MOE}} > \frac{M_{\text{params}} \cdot T_w \cdot FLOPS}{3 \cdot  M_{\text{comp}} \cdot nvlink}$$
+$$B > \frac{M_{\text{params}} \cdot T_w \cdot FLOPS}{3 \cdot  M_{\text{comp}} \cdot nvlink}$$
 
 |Hardware|DType| Model | $B$ |
 |-------|-----|------------| --|
@@ -138,7 +138,7 @@ It is still possible to train large MOE LLMs efficiently, but we need to tune HB
 
 We can see that hardware with larger HBM capacity can make MOE training much simpler.
 
-## Expert Parallelism and Gradient accumulation
+## Expert Parallelism and Gradient Accumulation
 
 To address MOE training challenges, expert parallelism combined with gradient accumulation provides a promising solution. The key challenge of FSDP MOE is the high communication overhead for all experts. Expert parallelism + gradient accumulation allows us to run multiple mini-batch computations before performing expert communication.
 
@@ -189,7 +189,7 @@ For MOE models, pipeline parallelism can:
 
 For pipeline parallelism, we usually set $$acc\_step=PP$$. We can also shard experts for one pipeline stage within a NVLink domain to leverage high-speed NVLink bandwidth. As a result, the communication overhead for each stage of PP training becomes:
 
-$$T_{\text{comm}} = \frac{2 \cdot M_{\text{params}} \cdot T_w}{nvlink} + \frac{2 \cdot B \cdot topK \cdot D \cdot L \cdot T_w }{nvlink} \cdot PP + \frac{2 \cdot B  \cdot D \cdot L \cdot T_w }{rdma}$$
+$$T_{\text{comm}} = \frac{2 \cdot M_{\text{params}} \cdot T_w}{nvlink} + \frac{2 \cdot B \cdot topK \cdot D \cdot L \cdot T_w }{nvlink} \cdot PP + \frac{2 \cdot B  \cdot D \cdot L \cdot T_w }{rdma} \cdot PP $$
 
 This is very similar to EP + Gradient accumulation. The only difference is the last part, which is PP stage communication.
 
@@ -201,7 +201,7 @@ This is also very similar to EP + Gradient accumulation.
 
 The memory requirement per pipeline stage becomes:
 
-$$16 \cdot M\_{params} / PP > 80GB * 8$$
+$$\frac{16 \cdot M_{\text{params}}}{PP} < 80GB \times 8$$
 
 which is much easier to achieve than EP + Gradient accumulation.
 
@@ -209,7 +209,7 @@ which is much easier to achieve than EP + Gradient accumulation.
 
 However, pipeline parallelism introduces significant complexity:
 
-1. **Bubble Time**: Pipeline bubbles are exacerbated by variable expert computation times.
+1. **Bubble Time**: (PP-1)(FW+BW) pipeline bubble can negatively impact training efficiency. It can be reduced using technologies like interleaved pipeline or DualPipe. Usually its overhead is $$<10\%$$.
 2. **Tuning Complexity**: Both FSDP and EP + Gradient accumulation are SPMD-style programming. For SPMD, every participant runs the same program, which makes it much easier to tune. On the other hand, in PP each stage runs a different program (MPMD), which can easily cause deadlocks and performance issues.
 3. **Model Architecture Limitation**: Model architectures like skip connections are very challenging for PP. 
 
