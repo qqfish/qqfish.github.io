@@ -57,12 +57,12 @@ There are 2 computationally dense stages in LLMs: MLP and Attention.
 | Stage | Required Flops | Required HBM data movement |
 | --- | --- | --- |
 | MLP | $$2 \cdot QPS \cdot (\text{Input}+\text{Output}) \cdot M_{\text{compute}}$$ |  $$\frac{2 \cdot QPS \cdot (\text{Input}+\text{Output})}{B} \cdot M_{\text{params}} \cdot T_w$$ |
-| Attn| $$2 \cdot QPS \cdot \text{Input} \cdot (\text{Input}+\text{Output}) \cdot H_q \cdot HD \cdot L$$ | $$QPS \cdot \text{Output} \cdot (2 \cdot \text{Input} + \text{Output}) \cdot H_{\text{kv}} \cdot HD \cdot L \cdot T_{\text{kv}}$$ |
+| Attn| $$2 \cdot QPS \cdot (\text{Input}+\text{Output})^2 \cdot H_q \cdot HD \cdot L$$ | $$QPS \cdot \text{Output} \cdot (2 \cdot \text{Input} + \text{Output}) \cdot H_{\text{kv}} \cdot HD \cdot L \cdot T_{\text{kv}}$$ |
 
 So the MFU of LLM inference is:
 
 $$
-MFU = \frac{2 \cdot QPS \cdot (Input+Output) \cdot M_{\text{compute}} + 2 \cdot QPS \cdot Input \cdot (Input+Output) \cdot H_q \cdot HD \cdot L}{\text{flops}}
+MFU = \frac{2 \cdot QPS \cdot (Input+Output) \cdot M_{\text{compute}} + 2 \cdot QPS \cdot (Input+Output)^2 \cdot H_q \cdot HD \cdot L}{\text{flops}}
 $$
 
 The following three components can potentially bottleneck LLM inference performance:
@@ -109,28 +109,30 @@ Among these hardware options, it's easier to achieve high MFU on H20 since it ha
 Attention computation becomes the bottleneck for end-to-end performance when:
 
 $$
-2 \cdot QPS \cdot Input \cdot (Input+Output) \cdot H_q \cdot HD \cdot L > 2 \cdot QPS \cdot (Input+Output) \cdot M_{\text{compute}}
+2 \cdot QPS=\cdot (Input+Output)^2 \cdot H_q \cdot HD \cdot L > 2 \cdot QPS \cdot (Input+Output) \cdot M_{\text{compute}}
 $$
 
 $$
-Input > \frac{M_{\text{compute}}}{H_q \cdot HD \cdot L}
+Input + Output > \frac{M_{\text{compute}}}{H_q \cdot HD \cdot L}
 $$
 
 To achieve high MFU in this case, we need to ensure that attention computation doesn't wait for HBM data movement.
 
 $$
-\frac{2 \cdot QPS \cdot Input \cdot (Input+Output) \cdot H_q \cdot HD \cdot L}{\text{flops}} > \frac{QPS \cdot Output \cdot (2 \cdot Input + Output) \cdot H_{kv} \cdot HD \cdot L \cdot T_{kv}}{BW}
+\frac{2 \cdot QPS \cdot (Input+Output)^2 \cdot H_q \cdot HD \cdot L}{\text{flops}} > \frac{QPS \cdot Output \cdot (2 \cdot Input + Output) \cdot H_{kv} \cdot HD \cdot L \cdot T_{kv}}{BW}
 $$
 
+We can simplify this fomula by apromimating $$ \frac{2 \cdot Input + Output}{Input + Output} = 2$$
+
 $$
-Output < Input \cdot \frac{H_q \cdot BW}{H_{kv} \cdot T_{kv} \cdot \text{flops}}
+\frac{Output}{Input + Output} < \cdot \frac{H_q \cdot BW}{H_{kv} \cdot T_{kv} \cdot \text{flops}}
 $$
 
-Output needs to be small enough to avoid being bottlenecked by HBM data movement. The ratio between input and output is mainly impacted by $$H_q/H_{\text{kv}}$$.
+When Input and Output is long enough, Attention will become the bottleneck of LLM inference. However, output needs to be small enough to avoid being bottlenecked by HBM data movement. The ratio between input and output is mainly impacted by $$H_q/H_{\text{kv}}$$.
 
 Here are the $$\text{Input}$$ and $$\text{Output}$$ when Attn computation is the bottleneck:
 
-| Hardware | Model | minimum Input length | maximum Output length | input:output ratio |
+| Hardware | Model | minimum Input+Output length | maximum Output length | output ratio |
 |--|--|--|--|--|
 | H100 | qwen3-32B| 61035| 827| 74|
 | H100 | qwen3-32B| 61035| 827| 74|
@@ -141,32 +143,34 @@ Here are the $$\text{Input}$$ and $$\text{Output}$$ when Attn computation is the
 | H100 | qwen3-235B-A22B| 28570| 774| 37|
 | H100 | deepseek-v3| 30017| 1627| 18|
 
-We can see that when input length exceeds 15K-60K tokens, attention becomes the bottleneck for end-to-end performance, regardless of hardware or data type. 
+We can see that when input+output length exceeds 15K-60K tokens, attention becomes the bottleneck for end-to-end performance, regardless of hardware or data type. 
 
 ### 3. Attention HBM data movement
 In long sequence generation, moving KV sequences from HBM to cache can become the bottleneck for end-to-end performance.
 
 $$
-\frac{QPS \cdot Output \cdot (2 \cdot Input + Output) \cdot H_{kv} \cdot HD \cdot L \cdot T_{kv}}{BW} > \max\left(\frac{2 \cdot QPS \cdot (Input+Output) \cdot M_{\text{compute}}}{\text{Flops}}, \frac{2 \cdot QPS \cdot Input \cdot (Input+Output) \cdot H_q \cdot HD \cdot L}{\text{Flops}}\right)
+\frac{QPS \cdot Output \cdot (2 \cdot Input + Output) \cdot H_{kv} \cdot HD \cdot L \cdot T_{kv}}{BW} > \max\left(\frac{2 \cdot QPS \cdot (Input+Output) \cdot M_{\text{compute}}}{\text{Flops}}, \frac{2 \cdot QPS \cdot (Input+Output)^2 \cdot H_q \cdot HD \cdot L}{\text{Flops}}\right)
 $$
 
+We also simplify this fomula by apromimating $$ \frac{2 \cdot Input + Output}{Input + Output} = 2$$
+
 $$
-Output > \max\left(\frac{M_{\text{compute}} \cdot BW}{H_{kv} \cdot HD \cdot L \cdot T_{kv} \cdot \text{Flops}}, \frac{Input \cdot H_q \cdot BW}{H_{kv} \cdot T_{kv} \cdot \text{Flops}}\right)
+Output > \max\left(\frac{M_{\text{compute}} \cdot BW}{H_{kv} \cdot HD \cdot L \cdot T_{kv} \cdot \text{Flops}}, \frac{(Input+Output) \cdot H_q \cdot BW}{H_{kv} \cdot T_{kv} \cdot \text{Flops}}\right)
 $$
 
 From this formula, we can see:
 - If $$M_{\text{compute}}$$ is smaller, it's easier to become memory bandwidth bound.
 
-| Hardware | Model | given Input length | Output length |
+| Hardware | Model | given Input+Output length | Output length |
 |--|--|--|--|
 | H100 | qwen3-32B-w16a16c16| 10000| 827|
 | H100 | qwen3-30B-A3B-w16a16c16| 10000| 207|
 | H100 | qwen3-235B-A22B-w16a16c16| 10000| 774|
 | H100 | deepseek-v3-w8a8c8| 10000| 1627|
 
-- If the input length is smaller, it's easier to become memory bandwidth bound.
+- If the context length is smaller, it's easier to become memory bandwidth bound.
 
-| Hardware | Model | given Input length | Output length |
+| Hardware | Model | given Input+Output length | Output length |
 |--|--|--|--|
 | H100 | qwen3-30B-A3B-w16a16c16| 1000| 207|
 | H100 | qwen3-30B-A3B-w16a16c16| 10000| 207|
@@ -175,7 +179,7 @@ From this formula, we can see:
 
 - If the hardware has a lower $$BW/\text{Flops}$$ ratio, it's easier to become memory bandwidth bound.
 
-| Hardware | Model | given Input length | Output length |
+| Hardware | Model | given Input+Output length | Output length |
 |--|--|--|--|
 | H100 | qwen3-30B-A3B-w16a16c16| 10000| 207|
 | H20 | qwen3-30B-A3B-w16a16c16| 10000| 1650|
@@ -185,7 +189,7 @@ From this formula, we can see:
 
 ### Takeaways
 - $$B$$ is critical for achieving high MFU on the MLP part. It is the most important optimization if input and output length are small.
-- If the input length exceeds ~60K tokens, attention computation becomes more expensive than the MLP component.
+- If the input+output length exceeds ~60K tokens, attention computation becomes more expensive than the MLP component.
 - Even medium output lengths (500-2000 tokens) can make LLM inference memory bandwidth bound.
 In the following sections, we will discuss the optimization we can use to mitigate these issues.
 
@@ -311,7 +315,7 @@ $$\text{TP\_cost} = \max\left(\frac{4 \cdot B \cdot H \cdot L}{W_{\text{nvlink}}
 Note:
 - TP for Attention is actually limited by $$H_{\text{kv}}$$, but this limitation can be mitigated by leveraging other model parallelism strategies like SP (sequence parallel).
 - In addition to TP, there are many other model parallelism strategies including PP (pipeline parallel), EP (expert parallel), SP (sequence parallel), USP (Ulysses sequence parallel), and CPP (chunk pipeline parallel). Each has different trade-offs. For simplicity, we focus only on TP.
-- We can adopt advanced communication computation overlap technique like Flux(https://arxiv.org/html/2406.06858v1) for further improvement.
+- We can adopt advanced communication computation overlap technique like [Flux](https://arxiv.org/html/2406.06858v1) for further improvement.
 
 ## Putting everything together
 
@@ -328,7 +332,6 @@ We use $$B$$ as batch size. The number of prefill tokens will be $$\frac{B \cdot
 | --- | --- | --- | --- |
 | MLP | $$\frac{2 \cdot B \cdot M_{\text{compute}}}{TP \cdot \text{Flops}}$$ |  $$\frac{M_{\text{params}} \cdot T_w}{TP \cdot BW}$$ | $$\frac{2 \cdot B \cdot H \cdot L}{W_{\text{nvlink}}}$$ |
 | Attn| $$\frac{2 \cdot B \cdot (\text{Input}+\text{Output}) \cdot H_q \cdot HD \cdot L}{TP \cdot \text{Flops}}$$ | $$\frac{B \cdot \text{output} \cdot (2 \cdot \text{Input} + \text{Output}) \cdot H_{\text{kv}} \cdot HD \cdot L \cdot T_{\text{kv}}}{(\text{Input} + \text{Output}) \cdot TP \cdot \text{expected\_tokens\_generated} \cdot BW}$$ | $$\frac{2 \cdot B \cdot H \cdot L}{W_{\text{nvlink}}}$$ |
-
 
 So the total step time of inference is
 
@@ -351,6 +354,7 @@ With this, we understand the roofline performance for LLM inference. We can sele
 - **Async scheduler**: ML hardware is becoming increasingly fast, and we don't want slow CPU operations to interfere with GPU execution. An async scheduler is critical for allowing the CPU to handle all preparation work ahead of time. Expected impact: 30% throughput improvements.
 - **Advanced model parallelism**: TP has limitations, so we need to combine it with other model parallelism strategies to achieve optimal performance. Expected impact: 10% throughput, 2x latency improvements.
 - **Heterogeneous hardware**: As mentioned in this blog, prefill-decode disaggregation can leverage heterogeneous hardware. Some model parallelism strategies can also utilize heterogeneous hardware. Using less expensive hardware can significantly reduce the overall cost of LLM inference. Expected impact: 2x cost improvements.
+- **Sparse Attention**: As we can see attention can easily become the e2e computation bottlenecks or HBM bandwidth bottlenecks. Technologies like Sparse Attention and window attention can help mitigate these bottlenecks. Expected impact: 10% improvements on short context; 2x~5x on long context.
 
 ## Appendix: Python program for "optimal TPOT-MFU function for LLM inference"
 
