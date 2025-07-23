@@ -1,1 +1,7 @@
-Hello, my name is Xiao Yu. Currently, I am a Research Scientis (Head of Engineering) in Bytedance. Previously I was in Google Brain Tensorflow team.
+---
+layout: home
+---
+
+Hi! I'm Xiao Yu, a Research Scientist at ByteDance. Previously, I worked on the Google Brain TensorFlow team.
+
+Welcome to my blog where I share thoughts on machine learning, engineering, and technology. Thanks for stopping by!
